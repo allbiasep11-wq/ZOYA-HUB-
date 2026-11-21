@@ -1,0 +1,675 @@
+local Players = game:GetService("Players")
+local UIS = game:GetService("UserInputService")
+local Workspace = game:GetService("Workspace")
+local LP = Players.LocalPlayer
+
+local PASSWORD = "ZOYA2026"
+local playerGui = LP:WaitForChild("PlayerGui")
+local parentGui = playerGui
+pcall(function()
+    if typeof(gethui) == "function" then
+        parentGui = gethui()
+    end
+end)
+
+pcall(function()
+    local old = parentGui:FindFirstChild("ZOYA_HUB")
+    if old then old:Destroy() end
+end)
+
+local alive = true
+local connections = {}
+local highlights = {}
+local oldCollisions = {}
+local esp = {Opah = false, Key = false, Code = false, Player = false}
+local rainbow, noclip, autoKey, speedOn = false, false, false, false
+local speedValue = 16
+local chosenColor = Color3.fromRGB(255, 45, 55)
+
+local COLORS = {
+    {"RED", Color3.fromRGB(255,45,55)},
+    {"BLUE", Color3.fromRGB(50,130,255)},
+    {"GREEN", Color3.fromRGB(50,230,100)},
+    {"YELLOW", Color3.fromRGB(255,220,40)},
+    {"PURPLE", Color3.fromRGB(170,70,255)},
+    {"PINK", Color3.fromRGB(255,90,190)},
+    {"CYAN", Color3.fromRGB(40,230,230)},
+    {"ORANGE", Color3.fromRGB(255,140,40)},
+    {"WHITE", Color3.fromRGB(255,255,255)},
+    {"BLACK", Color3.fromRGB(35,35,35)}
+}
+
+local function connect(signal, fn)
+    local c = signal:Connect(fn)
+    table.insert(connections, c)
+    return c
+end
+
+local function cleanup()
+    alive = false
+    for _, c in ipairs(connections) do
+        pcall(function() c:Disconnect() end)
+    end
+    for obj, h in pairs(highlights) do
+        pcall(function() h:Destroy() end)
+    end
+    table.clear(highlights)
+    for part, old in pairs(oldCollisions) do
+        if part and part.Parent then
+            pcall(function() part.CanCollide = old end)
+        end
+    end
+    local char = LP.Character
+    local hum = char and char:FindFirstChildOfClass("Humanoid")
+    if hum then pcall(function() hum.WalkSpeed = 16 end) end
+    pcall(function()
+        local gui = parentGui:FindFirstChild("ZOYA_HUB")
+        if gui then gui:Destroy() end
+    end)
+end
+
+if getgenv then
+    getgenv().ZOYA_CLEANUP = cleanup
+end
+
+local function new(class, props, parent)
+    local obj = Instance.new(class)
+    for k, v in pairs(props) do obj[k] = v end
+    obj.Parent = parent
+    return obj
+end
+
+local function round(obj, radius)
+    local c = Instance.new("UICorner")
+    c.CornerRadius = UDim.new(0, radius or 8)
+    c.Parent = obj
+end
+
+local function outline(obj, color, thickness)
+    local s = Instance.new("UIStroke")
+    s.Color = color or Color3.fromRGB(130,70,220)
+    s.Thickness = thickness or 1
+    s.Parent = obj
+end
+
+local PURPLE = Color3.fromRGB(125,65,220)
+local DARK = Color3.fromRGB(19,15,28)
+local PANEL = Color3.fromRGB(29,22,40)
+local BUTTON = Color3.fromRGB(48,34,65)
+
+local Gui = new("ScreenGui", {
+    Name = "ZOYA_HUB",
+    ResetOnSpawn = false,
+    IgnoreGuiInset = true,
+    ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+}, parentGui)
+
+-- Login
+local Login = new("Frame", {
+    Size = UDim2.fromOffset(300,190),
+    Position = UDim2.new(.5,-150,.5,-95),
+    BackgroundColor3 = DARK,
+    BorderSizePixel = 0
+}, Gui)
+round(Login,14)
+outline(Login)
+
+new("TextLabel", {
+    Size = UDim2.new(1,0,0,45),
+    BackgroundTransparency = 1,
+    Text = "✦ ZOYA HUB ✦",
+    TextColor3 = Color3.fromRGB(195,135,255),
+    Font = Enum.Font.GothamBold,
+    TextSize = 23
+}, Login)
+
+new("TextLabel", {
+    Position = UDim2.fromOffset(0,43),
+    Size = UDim2.new(1,0,0,25),
+    BackgroundTransparency = 1,
+    Text = "MALAM SAMA OPAH",
+    TextColor3 = Color3.fromRGB(210,195,230),
+    Font = Enum.Font.Gotham,
+    TextSize = 12
+}, Login)
+
+local Pass = new("TextBox", {
+    Position = UDim2.fromOffset(25,82),
+    Size = UDim2.new(1,-50,0,38),
+    BackgroundColor3 = BUTTON,
+    TextColor3 = Color3.new(1,1,1),
+    PlaceholderText = "Masukkan password",
+    Text = "",
+    Font = Enum.Font.Gotham,
+    TextSize = 14,
+    ClearTextOnFocus = false
+}, Login)
+round(Pass,8)
+
+local Enter = new("TextButton", {
+    Position = UDim2.fromOffset(25,132),
+    Size = UDim2.new(1,-50,0,38),
+    BackgroundColor3 = PURPLE,
+    Text = "LOGIN",
+    TextColor3 = Color3.new(1,1,1),
+    Font = Enum.Font.GothamBold,
+    TextSize = 14
+}, Login)
+round(Enter,8)
+
+local LoginMsg = new("TextLabel", {
+    Position = UDim2.fromOffset(0,170),
+    Size = UDim2.new(1,0,0,18),
+    BackgroundTransparency = 1,
+    Text = "",
+    TextColor3 = Color3.fromRGB(255,80,80),
+    Font = Enum.Font.Gotham,
+    TextSize = 11
+}, Login)
+
+-- Main window
+local Main = new("Frame", {
+    Size = UDim2.fromOffset(540,410),
+    Position = UDim2.new(.5,-270,.5,-205),
+    BackgroundColor3 = DARK,
+    BorderSizePixel = 0,
+    Visible = false,
+    ClipsDescendants = true
+}, Gui)
+round(Main,13)
+outline(Main,Color3.fromRGB(130,70,220),1.5)
+
+local Header = new("Frame", {
+    Size = UDim2.new(1,0,0,54),
+    BackgroundColor3 = Color3.fromRGB(35,23,50),
+    BorderSizePixel = 0
+}, Main)
+round(Header,12)
+
+new("TextLabel", {
+    Position = UDim2.fromOffset(14,3),
+    Size = UDim2.fromOffset(220,25),
+    BackgroundTransparency = 1,
+    Text = "✦ ZOYA HUB",
+    TextColor3 = Color3.fromRGB(205,145,255),
+    Font = Enum.Font.GothamBold,
+    TextSize = 20,
+    TextXAlignment = Enum.TextXAlignment.Left
+}, Header)
+
+new("TextLabel", {
+    Position = UDim2.fromOffset(15,29),
+    Size = UDim2.fromOffset(220,16),
+    BackgroundTransparency = 1,
+    Text = "MALAM SAMA OPAH",
+    TextColor3 = Color3.fromRGB(180,165,195),
+    Font = Enum.Font.Gotham,
+    TextSize = 10,
+    TextXAlignment = Enum.TextXAlignment.Left
+}, Header)
+
+local function headButton(txt, x, color)
+    local b = new("TextButton", {
+        Position = UDim2.new(1,x,0,10),
+        Size = UDim2.fromOffset(28,30),
+        BackgroundColor3 = color,
+        Text = txt,
+        TextColor3 = Color3.new(1,1,1),
+        Font = Enum.Font.GothamBold,
+        TextSize = 17
+    }, Header)
+    round(b,6)
+    return b
+end
+
+local Min = headButton("—",-112,Color3.fromRGB(80,50,110))
+local Up = headButton("↑",-76,Color3.fromRGB(80,50,110))
+local Close = headButton("×",-40,Color3.fromRGB(160,45,65))
+
+local Sidebar = new("Frame", {
+    Position = UDim2.fromOffset(10,64),
+    Size = UDim2.fromOffset(112,335),
+    BackgroundColor3 = PANEL,
+    BorderSizePixel = 0
+}, Main)
+round(Sidebar,9)
+
+local Content = new("ScrollingFrame", {
+    Position = UDim2.fromOffset(132,64),
+    Size = UDim2.new(1,-143,1,-77),
+    BackgroundColor3 = Color3.fromRGB(25,19,35),
+    BorderSizePixel = 0,
+    ScrollBarThickness = 3,
+    ScrollBarImageColor3 = Color3.fromRGB(150,90,220),
+    CanvasSize = UDim2.new(0,0,0,620)
+}, Main)
+round(Content,9)
+
+local Restore = new("TextButton", {
+    Position = UDim2.new(0,8,.5,-20),
+    Size = UDim2.fromOffset(76,42),
+    BackgroundColor3 = Color3.fromRGB(100,50,160),
+    Text = "✦ ZOYA",
+    TextColor3 = Color3.new(1,1,1),
+    Font = Enum.Font.GothamBold,
+    TextSize = 12,
+    Visible = false
+}, Gui)
+round(Restore,9)
+outline(Restore)
+
+local function hideMenu()
+    Main.Visible = false
+    Restore.Visible = true
+end
+
+local function showMenu()
+    Main.Visible = true
+    Restore.Visible = false
+end
+
+Min.MouseButton1Click:Connect(hideMenu)
+Close.MouseButton1Click:Connect(hideMenu)
+Restore.MouseButton1Click:Connect(showMenu)
+Up.MouseButton1Click:Connect(function()
+    Main.Position = UDim2.new(Main.Position.X.Scale,Main.Position.X.Offset,.06,0)
+end)
+
+-- Drag window from empty header space
+local dragging, dragInput, dragStart, startPos = false,nil,nil,nil
+Header.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        local x = input.Position.X - Header.AbsolutePosition.X
+        if x < Header.AbsoluteSize.X - 125 then
+            dragging = true
+            dragInput = input
+            dragStart = input.Position
+            startPos = Main.Position
+        end
+    end
+end)
+
+connect(UIS.InputChanged,function(input)
+    if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input == dragInput) then
+        local delta = input.Position - dragStart
+        Main.Position = UDim2.new(startPos.X.Scale,startPos.X.Offset+delta.X,startPos.Y.Scale,startPos.Y.Offset+delta.Y)
+    end
+end)
+
+connect(UIS.InputEnded,function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input == dragInput then
+        dragging = false
+        dragInput = nil
+    end
+end)
+
+-- Resize handle
+local Resize = new("TextButton", {
+    AnchorPoint = Vector2.new(1,1),
+    Position = UDim2.new(1,-3,1,-3),
+    Size = UDim2.fromOffset(25,25),
+    BackgroundColor3 = Color3.fromRGB(115,65,175),
+    Text = "↘",
+    TextColor3 = Color3.new(1,1,1),
+    Font = Enum.Font.GothamBold,
+    TextSize = 16
+}, Main)
+round(Resize,6)
+
+local resizing, resizeInput, resizeStart, resizeSize = false,nil,nil,nil
+Resize.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        resizing = true
+        resizeInput = input
+        resizeStart = input.Position
+        resizeSize = Main.Size
+    end
+end)
+
+connect(UIS.InputChanged,function(input)
+    if resizing and (input.UserInputType == Enum.UserInputType.MouseMovement or input == resizeInput) then
+        local delta = input.Position - resizeStart
+        Main.Size = UDim2.fromOffset(
+            math.clamp(resizeSize.X.Offset+delta.X,390,760),
+            math.clamp(resizeSize.Y.Offset+delta.Y,310,680)
+        )
+    end
+end)
+
+connect(UIS.InputEnded,function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input == resizeInput then
+        resizing = false
+        resizeInput = nil
+    end
+end)
+
+local function clearContent()
+    for _,v in ipairs(Content:GetChildren()) do
+        if v:IsA("GuiObject") then v:Destroy() end
+    end
+end
+
+local function section(txt,y)
+    new("TextLabel", {
+        Position = UDim2.fromOffset(12,y),
+        Size = UDim2.new(1,-24,0,25),
+        BackgroundTransparency = 1,
+        Text = txt,
+        TextColor3 = Color3.fromRGB(190,130,255),
+        Font = Enum.Font.GothamBold,
+        TextSize = 13,
+        TextXAlignment = Enum.TextXAlignment.Left
+    }, Content)
+end
+
+local function actionButton(txt,y,fn,color,width)
+    local b = new("TextButton", {
+        Position = UDim2.fromOffset(12,y),
+        Size = UDim2.new(1,-24,0,35),
+        BackgroundColor3 = color or BUTTON,
+        Text = txt,
+        TextColor3 = Color3.new(1,1,1),
+        Font = Enum.Font.Gotham,
+        TextSize = 12
+    }, Content)
+    round(b,7)
+    b.MouseButton1Click:Connect(fn)
+    return b
+end
+
+local function makeToggle(txt,y,initial,fn)
+    local state = initial == true
+    local b
+    b = actionButton(txt.." : "..(state and "ON" or "OFF"),y,function()
+        state = not state
+        b.Text = txt.." : "..(state and "ON" or "OFF")
+        b.BackgroundColor3 = state and Color3.fromRGB(105,55,165) or BUTTON
+        fn(state)
+    end)
+    return b
+end
+
+local function hasName(obj,words)
+    local name = string.lower(obj.Name)
+    for _,word in ipairs(words) do
+        if string.find(name,word,1,true) then return true end
+    end
+    return false
+end
+
+local function clearESP(obj)
+    local h = highlights[obj]
+    if h then
+        pcall(function() h:Destroy() end)
+        highlights[obj] = nil
+    end
+end
+
+local function addESP(obj,color,title)
+    if not obj or not obj.Parent then return end
+    if not (obj:IsA("Model") or obj:IsA("BasePart")) then return end
+    if obj:IsA("Model") and not obj:FindFirstChildWhichIsA("BasePart") then return end
+
+    local h = highlights[obj]
+    if not h then
+        h = Instance.new("Highlight")
+        h.Name = "ZOYA_ESP"
+        h.Adornee = obj
+        h.FillTransparency = 0.72
+        h.OutlineTransparency = 0
+        h.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+        h.Parent = Workspace
+        highlights[obj] = h
+    end
+    h.FillColor = color
+    h.OutlineColor = color
+
+    if title then
+        local part = obj:IsA("Model") and (obj:FindFirstChild("Head") or obj:FindFirstChildWhichIsA("BasePart")) or obj
+        if part and not part:FindFirstChild("ZOYA_TAG") then
+            local bb = Instance.new("BillboardGui")
+            bb.Name = "ZOYA_TAG"
+            bb.Adornee = part
+            bb.Size = UDim2.fromOffset(170,25)
+            bb.StudsOffset = Vector3.new(0,3,0)
+            bb.AlwaysOnTop = true
+            bb.Parent = part
+
+            local label = Instance.new("TextLabel")
+            label.Size = UDim2.fromScale(1,1)
+            label.BackgroundTransparency = 1
+            label.Text = title
+            label.TextColor3 = color
+            label.TextStrokeTransparency = 0
+            label.Font = Enum.Font.GothamBold
+            label.TextSize = 12
+            label.Parent = bb
+        end
+    end
+end
+
+local function scan()
+    for _,obj in ipairs(Workspace:GetDescendants()) do
+        if not alive then return end
+        if esp.Opah and hasName(obj,{"opah"}) then
+            addESP(obj,rainbow and Color3.fromHSV((tick()%5)/5,1,1) or chosenColor,"OPAH")
+        elseif esp.Key and hasName(obj,{"key","kunci"}) then
+            addESP(obj,Color3.fromRGB(255,220,40),"KEY")
+        elseif esp.Code and hasName(obj,{"code","kode","note","paper"}) then
+            addESP(obj,Color3.fromRGB(50,220,255),"CODE")
+        end
+    end
+
+    for _,p in ipairs(Players:GetPlayers()) do
+        if p ~= LP and p.Character then
+            if esp.Player then
+                addESP(p.Character,Color3.fromRGB(80,220,255),"PLAYER: "..p.Name)
+            else
+                clearESP(p.Character)
+            end
+        end
+    end
+end
+
+local function showMain()
+    clearContent()
+    section("✦ MAIN FEATURES",5)
+    makeToggle("ESP OPAH",38,false,function(v)
+        esp.Opah = v
+        if not v then
+            for obj in pairs(highlights) do
+                if hasName(obj,{"opah"}) then clearESP(obj) end
+            end
+        end
+    end)
+    makeToggle("ESP KEY",78,false,function(v)
+        esp.Key = v
+        if not v then
+            for obj in pairs(highlights) do
+                if hasName(obj,{"key","kunci"}) then clearESP(obj) end
+            end
+        end
+    end)
+    makeToggle("ESP CODE",118,false,function(v)
+        esp.Code = v
+        if not v then
+            for obj in pairs(highlights) do
+                if hasName(obj,{"code","kode","note","paper"}) then clearESP(obj) end
+            end
+        end
+    end)
+    makeToggle("ESP PLAYER",158,false,function(v)
+        esp.Player = v
+        if not v then
+            for _,p in ipairs(Players:GetPlayers()) do
+                if p.Character then clearESP(p.Character) end
+            end
+        end
+    end)
+    makeToggle("AUTO KEY",198,false,function(v) autoKey = v end)
+    makeToggle("NO CLIP",238,false,function(v) noclip = v end)
+    makeToggle("RAINBOW OPAH",278,false,function(v) rainbow = v end)
+
+    section("✦ WALK SPEED",325)
+    local speedBox = new("TextBox", {
+        Position = UDim2.fromOffset(12,355),
+        Size = UDim2.fromOffset(105,32),
+        BackgroundColor3 = BUTTON,
+        Text = tostring(speedValue),
+        TextColor3 = Color3.new(1,1,1),
+        PlaceholderText = "1 - 200",
+        Font = Enum.Font.Gotham,
+        TextSize = 13,
+        ClearTextOnFocus = false
+    }, Content)
+    round(speedBox,7)
+
+    local apply = new("TextButton", {
+        Position = UDim2.fromOffset(125,355),
+        Size = UDim2.new(1,-137,0,32),
+        BackgroundColor3 = PURPLE,
+        Text = "APPLY SPEED",
+        TextColor3 = Color3.new(1,1,1),
+        Font = Enum.Font.GothamBold,
+        TextSize = 12
+    }, Content)
+    round(apply,7)
+    apply.MouseButton1Click:Connect(function()
+        local n = tonumber(speedBox.Text)
+        if n then
+            speedValue = math.clamp(n,1,200)
+            speedBox.Text = tostring(speedValue)
+            local char = LP.Character
+            local hum = char and char:FindFirstChildOfClass("Humanoid")
+            if hum and speedOn then hum.WalkSpeed = speedValue end
+        else
+            speedBox.Text = tostring(speedValue)
+        end
+    end)
+
+    makeToggle("SPEED ON/OFF",395,false,function(v)
+        speedOn = v
+        local char = LP.Character
+        local hum = char and char:FindFirstChildOfClass("Humanoid")
+        if hum then hum.WalkSpeed = v and speedValue or 16 end
+    end)
+
+    section("✦ ENDING",445)
+    actionButton("SECRET ENDING  •  COMING SOON",475,function() end,Color3.fromRGB(75,45,100))
+    Content.CanvasSize = UDim2.new(0,0,0,530)
+end
+
+local function showSettings()
+    clearContent()
+    section("✦ ESP OPAH COLOR",5)
+    for i,item in ipairs(COLORS) do
+        local color = item[2]
+        local b = new("TextButton", {
+            Position = UDim2.fromOffset(12,35+(i-1)*39),
+            Size = UDim2.new(1,-24,0,32),
+            BackgroundColor3 = color,
+            Text = item[1]..(chosenColor == color and "  ✓" or ""),
+            TextColor3 = (i == 4 or i == 9) and Color3.fromRGB(25,25,25) or Color3.new(1,1,1),
+            Font = Enum.Font.GothamBold,
+            TextSize = 12
+        }, Content)
+        round(b,7)
+        b.MouseButton1Click:Connect(function()
+            chosenColor = color
+            rainbow = false
+            showSettings()
+        end)
+    end
+    Content.CanvasSize = UDim2.new(0,0,0,35+#COLORS*39)
+end
+
+local function tab(txt,y,fn)
+    local b = new("TextButton", {
+        Position = UDim2.fromOffset(8,y),
+        Size = UDim2.new(1,-16,0,40),
+        BackgroundColor3 = Color3.fromRGB(55,35,75),
+        Text = txt,
+        TextColor3 = Color3.new(1,1,1),
+        Font = Enum.Font.GothamBold,
+        TextSize = 13
+    }, Sidebar)
+    round(b,7)
+    b.MouseButton1Click:Connect(fn)
+end
+
+tab("MAIN",12,showMain)
+tab("SETTING",60,showSettings)
+
+local function login()
+    if Pass.Text == PASSWORD then
+        Login.Visible = false
+        showMenu()
+        showMain()
+    else
+        LoginMsg.Text = "PASSWORD SALAH!"
+        Pass.Text = ""
+    end
+end
+
+Enter.MouseButton1Click:Connect(login)
+Pass.FocusLost:Connect(function(enterPressed)
+    if enterPressed then login() end
+end)
+
+local warning = new("TextLabel", {
+    Position = UDim2.new(.5,-130,0,12),
+    Size = UDim2.fromOffset(260,35),
+    BackgroundColor3 = Color3.fromRGB(130,25,40),
+    Text = "⚠ OPAH SEDANG DEKAT!",
+    TextColor3 = Color3.new(1,1,1),
+    Font = Enum.Font.GothamBold,
+    TextSize = 13,
+    Visible = false
+}, Gui)
+round(warning,8)
+
+local function getPart(obj)
+    if obj:IsA("Model") then
+        return obj:FindFirstChild("HumanoidRootPart") or obj:FindFirstChildWhichIsA("BasePart")
+    elseif obj:IsA("BasePart") then
+        return obj
+    end
+    return nil
+end
+
+task.spawn(function()
+    while alive do
+        pcall(scan)
+
+        local char = LP.Character
+        local root = char and char:FindFirstChild("HumanoidRootPart")
+        local hum = char and char:FindFirstChildOfClass("Humanoid")
+
+        if hum and speedOn then hum.WalkSpeed = speedValue end
+
+        if char then
+            for _,part in ipairs(char:GetDescendants()) do
+                if part:IsA("BasePart") then
+                    if noclip then
+                        if oldCollisions[part] == nil then oldCollisions[part] = part.CanCollide end
+                        part.CanCollide = false
+                    elseif oldCollisions[part] ~= nil then
+                        part.CanCollide = oldCollisions[part]
+                        oldCollisions[part] = nil
+                    end
+                end
+            end
+        end
+
+        local near = false
+        if root then
+            for _,obj in ipairs(Workspace:GetDescendants()) do
+                if hasName(obj,{"opah"}) then
+                    local part = getPart(obj)
+                    if part and (part.Position-root.Position).Magnitude < 35 then
+                        near = true
+                        break
+                    end
+                end
+            end
+        e
