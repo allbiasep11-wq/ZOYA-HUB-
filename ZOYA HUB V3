@@ -1,0 +1,332 @@
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UIS = game:GetService("UserInputService")
+local Workspace = game:GetService("Workspace")
+local TweenService = game:GetService("TweenService")
+local Debris = game:GetService("Debris")
+
+local LP = Players.LocalPlayer
+local PlayerGui = LP:WaitForChild("PlayerGui")
+local PASSWORD = "ZOYA2026"
+
+local old = PlayerGui:FindFirstChild("ZOYA_HUB_V2")
+if old then old:Destroy() end
+
+local COLORS = {
+    Red=Color3.fromRGB(255,55,75), Blue=Color3.fromRGB(65,145,255),
+    Green=Color3.fromRGB(65,220,130), Yellow=Color3.fromRGB(255,220,65),
+    Purple=Color3.fromRGB(175,95,255), Pink=Color3.fromRGB(255,105,190),
+    Cyan=Color3.fromRGB(55,225,235), Orange=Color3.fromRGB(255,145,55),
+    White=Color3.fromRGB(245,245,245), Black=Color3.fromRGB(35,35,42)
+}
+local colorNames = {"Red","Blue","Green","Yellow","Purple","Pink","Cyan","Orange","White","Black"}
+local esp = {Opah=false, Key=false, Code=false, Player=false}
+local opahColor, playerColor = COLORS.Red, COLORS.Cyan
+local rainbow, noclip, autoKey, speedOn, alertOn = false,false,false,false,true
+local speedValue = 24
+local alive, dragging = true,false
+local highlights, oldCollisions = {}, {}
+local originalSpeed
+local alertWasNear = false
+local lastSound = 0
+
+local function notify(msg)
+    pcall(function()
+        game:GetService("StarterGui"):SetCore("SendNotification", {
+            Title="ZOYA HUB V2", Text=msg, Duration=3
+        })
+    end)
+end
+
+local gui = Instance.new("ScreenGui")
+gui.Name = "ZOYA_HUB_V2"
+gui.ResetOnSpawn = false
+gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+gui.Parent = (gethui and gethui()) or PlayerGui
+
+local function corner(obj, radius)
+    local c=Instance.new("UICorner"); c.CornerRadius=UDim.new(0,radius or 8); c.Parent=obj
+end
+local function stroke(obj, color)
+    local s=Instance.new("UIStroke"); s.Color=color or Color3.fromRGB(145,90,240); s.Thickness=1.3; s.Parent=obj
+end
+local function text(parent, value, size, pos, fontSize, color, bold)
+    local t=Instance.new("TextLabel")
+    t.BackgroundTransparency=1; t.Size=size; t.Position=pos
+    t.Text=value; t.TextSize=fontSize or 12; t.TextColor3=color or Color3.new(1,1,1)
+    t.Font=bold and Enum.Font.GothamBold or Enum.Font.Gotham
+    t.TextXAlignment=Enum.TextXAlignment.Left; t.Parent=parent
+    return t
+end
+
+-- Login
+local login=Instance.new("Frame")
+login.Size=UDim2.fromOffset(300,185); login.Position=UDim2.new(.5,-150,.5,-92)
+login.BackgroundColor3=Color3.fromRGB(20,17,30); login.Parent=gui; corner(login,14); stroke(login)
+text(login,"✦ ZOYA HUB V2",UDim2.new(1,-24,0,32),UDim2.fromOffset(16,12),19,Color3.fromRGB(215,185,255),true)
+text(login,"MALAM SAMA OPAH • ENTER PASSWORD",UDim2.new(1,-24,0,20),UDim2.fromOffset(16,48),10,Color3.fromRGB(165,155,180))
+local pass=Instance.new("TextBox")
+pass.Size=UDim2.new(1,-32,0,38); pass.Position=UDim2.fromOffset(16,78)
+pass.BackgroundColor3=Color3.fromRGB(39,33,52); pass.TextColor3=Color3.new(1,1,1)
+pass.PlaceholderText="Password..."; pass.Text=""; pass.ClearTextOnFocus=false
+pass.Font=Enum.Font.Gotham; pass.TextSize=13; pass.Parent=login; corner(pass,8)
+local unlock=Instance.new("TextButton")
+unlock.Size=UDim2.new(1,-32,0,34); unlock.Position=UDim2.fromOffset(16,128)
+unlock.BackgroundColor3=Color3.fromRGB(125,75,220); unlock.Text="UNLOCK HUB"
+unlock.TextColor3=Color3.new(1,1,1); unlock.Font=Enum.Font.GothamBold
+unlock.TextSize=12; unlock.Parent=login; corner(unlock,8)
+
+-- Alert banner pinned at top
+local banner=Instance.new("Frame")
+banner.Size=UDim2.fromOffset(300,42); banner.Position=UDim2.new(.5,-150,0,-55)
+banner.BackgroundColor3=Color3.fromRGB(155,25,40); banner.Visible=false
+banner.Parent=gui; corner(banner,11); stroke(banner,Color3.fromRGB(255,95,105))
+local bannerText=text(banner,"⚠  OPAH SEDANG DEKAT!",UDim2.new(1,-16,1,0),UDim2.fromOffset(12,0),14,Color3.new(1,1,1),true)
+bannerText.TextXAlignment=Enum.TextXAlignment.Center
+local function setBanner(show)
+    if show and not banner.Visible then
+        banner.Visible=true
+        TweenService:Create(banner,TweenInfo.new(.25),{Position=UDim2.new(.5,-150,0,12)}):Play()
+    elseif not show and banner.Visible then
+        local tw=TweenService:Create(banner,TweenInfo.new(.2),{Position=UDim2.new(.5,-150,0,-55)})
+        tw:Play(); tw.Completed:Once(function() if banner.Position.Y.Offset<0 then banner.Visible=false end end)
+    end
+end
+
+local main, mini
+local function build()
+    login:Destroy()
+    main=Instance.new("Frame")
+    main.Size=UDim2.fromOffset(500,390); main.Position=UDim2.new(.5,-250,.5,-195)
+    main.BackgroundColor3=Color3.fromRGB(18,16,27); main.Parent=gui
+    main.Active=true; corner(main,13); stroke(main)
+    local top=Instance.new("Frame"); top.Size=UDim2.new(1,0,0,52)
+    top.BackgroundColor3=Color3.fromRGB(34,25,49); top.Parent=main; corner(top,12)
+    text(top,"✦ ZOYA HUB V2",UDim2.new(1,-100,0,25),UDim2.fromOffset(14,5),18,Color3.fromRGB(220,195,255),true)
+    text(top,"MALAM SAMA OPAH • ADVANCED",UDim2.new(1,-100,0,16),UDim2.fromOffset(16,30),9,Color3.fromRGB(155,140,175))
+    local min=Instance.new("TextButton"); min.Size=UDim2.fromOffset(34,30)
+    min.Position=UDim2.new(1,-44,0,11); min.Text="—"; min.TextSize=18
+    min.TextColor3=Color3.new(1,1,1); min.BackgroundColor3=Color3.fromRGB(75,55,100)
+    min.Parent=top; corner(min,7)
+    mini=Instance.new("TextButton"); mini.Size=UDim2.fromOffset(105,38)
+    mini.Position=UDim2.new(0,14,.55,0); mini.Text="✦ ZOYA V2"; mini.Visible=false
+    mini.TextColor3=Color3.new(1,1,1); mini.BackgroundColor3=Color3.fromRGB(110,65,185)
+    mini.Font=Enum.Font.GothamBold; mini.Parent=gui; corner(mini,9)
+    min.MouseButton1Click:Connect(function() main.Visible=false; mini.Visible=true end)
+    mini.MouseButton1Click:Connect(function() main.Visible=true; mini.Visible=false end)
+
+    -- Drag support (mouse and touch)
+    top.InputBegan:Connect(function(input)
+        if input.UserInputType==Enum.UserInputType.MouseButton1 or input.UserInputType==Enum.UserInputType.Touch then
+            dragging=true; local start=input.Position; local origin=main.Position
+            local moveConn
+            moveConn=UIS.InputChanged:Connect(function(changed)
+                if dragging and (changed.UserInputType==Enum.UserInputType.MouseMovement or changed.UserInputType==Enum.UserInputType.Touch) then
+                    local d=changed.Position-start
+                    main.Position=UDim2.new(origin.X.Scale,origin.X.Offset+d.X,origin.Y.Scale,origin.Y.Offset+d.Y)
+                end
+            end)
+            input.Changed:Connect(function()
+                if input.UserInputState==Enum.UserInputState.End then dragging=false; if moveConn then moveConn:Disconnect() end end
+            end)
+        end
+    end)
+
+    local side=Instance.new("Frame"); side.Position=UDim2.fromOffset(10,62)
+    side.Size=UDim2.fromOffset(112,316); side.BackgroundColor3=Color3.fromRGB(27,23,37)
+    side.Parent=main; corner(side,9)
+    local body=Instance.new("ScrollingFrame"); body.Position=UDim2.fromOffset(132,62)
+    body.Size=UDim2.new(1,-142,1,-74); body.BackgroundColor3=Color3.fromRGB(25,22,34)
+    body.BorderSizePixel=0; body.ScrollBarThickness=4; body.AutomaticCanvasSize=Enum.AutomaticSize.Y
+    body.CanvasSize=UDim2.new(); body.Parent=main; corner(body,9)
+    local pad=Instance.new("UIPadding"); pad.PaddingTop=UDim.new(0,8); pad.PaddingLeft=UDim.new(0,8); pad.PaddingRight=UDim.new(0,8); pad.Parent=body
+    local layout=Instance.new("UIListLayout"); layout.Padding=UDim.new(0,6); layout.Parent=body
+
+    local function clear()
+        for _,v in ipairs(body:GetChildren()) do if v:IsA("GuiObject") and v~=layout and not v:IsA("UIPadding") then v:Destroy() end end
+    end
+    local function section(title)
+        local t=text(body,title,UDim2.new(1,-8,0,22),UDim2.new(),11,Color3.fromRGB(195,160,255),true)
+    end
+    local function rowButton(title, state, callback)
+        local row=Instance.new("Frame"); row.Size=UDim2.new(1,-6,0,35)
+        row.BackgroundColor3=Color3.fromRGB(40,34,52); row.Parent=body; corner(row,7)
+        text(row,title,UDim2.new(1,-92,1,0),UDim2.fromOffset(9,0),11,Color3.fromRGB(240,235,245))
+        local b=Instance.new("TextButton"); b.Size=UDim2.fromOffset(70,25); b.Position=UDim2.new(1,-78,.5,-12)
+        b.BackgroundColor3=state and Color3.fromRGB(120,70,195) or Color3.fromRGB(72,63,85)
+        b.Text=state and "ON" or "OFF"; b.TextColor3=Color3.new(1,1,1)
+        b.Font=Enum.Font.GothamBold; b.TextSize=10; b.Parent=row; corner(b,6)
+        b.MouseButton1Click:Connect(function() local new=callback(); b.Text=new and "ON" or "OFF"; b.BackgroundColor3=new and Color3.fromRGB(120,70,195) or Color3.fromRGB(72,63,85) end)
+    end
+    local function actionButton(title, callback, right)
+        local row=Instance.new("Frame"); row.Size=UDim2.new(1,-6,0,35); row.BackgroundColor3=Color3.fromRGB(40,34,52); row.Parent=body; corner(row,7)
+        text(row,title,UDim2.new(1,-92,1,0),UDim2.fromOffset(9,0),11,Color3.fromRGB(240,235,245))
+        local b=Instance.new("TextButton"); b.Size=UDim2.fromOffset(70,25); b.Position=UDim2.new(1,-78,.5,-12)
+        b.BackgroundColor3=Color3.fromRGB(72,63,85); b.Text=right or "SET"
+        b.TextColor3=Color3.new(1,1,1); b.Font=Enum.Font.GothamBold; b.TextSize=9; b.Parent=row; corner(b,6)
+        b.MouseButton1Click:Connect(callback)
+    end
+    local function inputRow(title, initial, callback)
+        local row=Instance.new("Frame"); row.Size=UDim2.new(1,-6,0,36); row.BackgroundColor3=Color3.fromRGB(40,34,52); row.Parent=body; corner(row,7)
+        text(row,title,UDim2.new(1,-105,1,0),UDim2.fromOffset(9,0),10)
+        local box=Instance.new("TextBox"); box.Size=UDim2.fromOffset(78,25); box.Position=UDim2.new(1,-86,.5,-12)
+        box.BackgroundColor3=Color3.fromRGB(58,49,72); box.Text=tostring(initial); box.TextColor3=Color3.new(1,1,1)
+        box.Font=Enum.Font.Gotham; box.TextSize=10; box.Parent=row; corner(box,5)
+        box.FocusLost:Connect(function() local n=tonumber(box.Text); if n then callback(n) else box.Text=tostring(initial) end end)
+    end
+
+    local function renderMain()
+        clear(); section("VISUAL ESP")
+        for _,key in ipairs({"Opah","Key","Code","Player"}) do
+            rowButton("ESP "..key,esp[key],function() esp[key]=not esp[key]; return esp[key] end)
+        end
+        rowButton("Rainbow Opah",rainbow,function() rainbow=not rainbow; return rainbow end)
+        section("MOVEMENT")
+        rowButton("No Clip",noclip,function() noclip=not noclip; return noclip end)
+        rowButton("Walk Speed",speedOn,function() speedOn=not speedOn; return speedOn end)
+        inputRow("Speed (1 - 200)",speedValue,function(n) speedValue=math.clamp(math.floor(n),1,200) end)
+        section("AUTOMATION")
+        rowButton("Auto Key",autoKey,function() autoKey=not autoKey; return autoKey end)
+        actionButton("Secret Ending",function() notify("Secret Ending masih COMING SOON") end,"SOON")
+    end
+    local function renderSettings()
+        clear(); section("WARNA ESP OPAH")
+        for _,name in ipairs(colorNames) do
+            actionButton(name,function() opahColor=COLORS[name]; rainbow=false; notify("Warna Opah: "..name) end,"PILIH")
+        end
+        section("WARNA ESP PLAYER")
+        for _,name in ipairs(colorNames) do
+            actionButton("Player "..name,function() playerColor=COLORS[name]; notify("Warna Player: "..name) end,"PILIH")
+        end
+        section("PERINGATAN")
+        rowButton("Notifikasi Opah dekat",alertOn,function() alertOn=not alertOn; if not alertOn then setBanner(false) end; return alertOn end)
+    end
+    local function tab(title,y,fn)
+        local b=Instance.new("TextButton"); b.Size=UDim2.new(1,-12,0,36); b.Position=UDim2.fromOffset(6,y)
+        b.BackgroundColor3=Color3.fromRGB(54,42,72); b.Text=title; b.TextColor3=Color3.new(1,1,1)
+        b.Font=Enum.Font.GothamBold; b.TextSize=10; b.Parent=side; corner(b,7); b.MouseButton1Click:Connect(fn)
+    end
+    tab("✦ MAIN",10,renderMain); tab("⚙ SETTING",54,renderSettings)
+    text(side,"ZOYA HUB V2",UDim2.new(1,-8,0,20),UDim2.fromOffset(5,285),9,Color3.fromRGB(145,125,170),true)
+    renderMain()
+end
+
+unlock.MouseButton1Click:Connect(function()
+    if pass.Text==PASSWORD then build() else pass.Text=""; pass.PlaceholderText="Password salah!" end
+end)
+pass.FocusLost:Connect(function(enterPressed) if enterPressed then unlock:Activate() end end)
+
+local function rootOf(model)
+    if not model then return nil end
+    return model:FindFirstChild("HumanoidRootPart") or model.PrimaryPart or model:FindFirstChildWhichIsA("BasePart")
+end
+local function kindOf(obj)
+    local name=obj.Name:lower()
+    if name:find("opah") or name:find("nenek") then return "Opah" end
+    if name:find("key") or name:find("kunci") then return "Key" end
+    if name:find("code") or name:find("kode") or name:find("password") then return "Code" end
+    return nil
+end
+local function clearHighlight(obj)
+    if highlights[obj] then pcall(function() highlights[obj]:Destroy() end); highlights[obj]=nil end
+end
+local function addHighlight(obj, kind)
+    if highlights[obj] or not obj:IsDescendantOf(Workspace) then return end
+    local target=obj
+    if not (obj:IsA("Model") or obj:IsA("BasePart")) then return end
+    local h=Instance.new("Highlight"); h.Name="ZOYA_V2_ESP"; h.Adornee=target
+    h.DepthMode=Enum.HighlightDepthMode.AlwaysOnTop; h.FillTransparency=.78; h.OutlineTransparency=0
+    local c=(kind=="Opah" and opahColor) or (kind=="Player" and playerColor) or (kind=="Key" and COLORS.Yellow) or COLORS.Cyan
+    h.FillColor=c; h.OutlineColor=c; h.Parent=Workspace; highlights[obj]=h
+end
+local function playAlert()
+    if os.clock()-lastSound<4 then return end
+    lastSound=os.clock()
+    pcall(function()
+        local s=Instance.new("Sound"); s.SoundId="rbxassetid://9118823101"; s.Volume=.7; s.Parent=Workspace
+        s:Play(); Debris:AddItem(s,4)
+    end)
+    notify("⚠ OPAH DEKAT! Opah terdeteksi di sekitar kamu.")
+end
+
+local scanTimer=0
+local heartbeatConn=RunService.Heartbeat:Connect(function(dt)
+    if not alive then return end
+    scanTimer+=dt
+    if scanTimer<1 then return end
+    scanTimer=0
+    local myRoot=rootOf(LP.Character)
+    local near=false
+    for _,obj in ipairs(Workspace:GetDescendants()) do
+        if obj:IsA("Model") or obj:IsA("BasePart") then
+            local kind=kindOf(obj)
+            if kind and esp[kind] then addHighlight(obj,kind) elseif highlights[obj] and kind then clearHighlight(obj) end
+            if kind=="Opah" and myRoot and alertOn then
+                local targetRoot=rootOf(obj:IsA("Model") and obj or obj:FindFirstAncestorOfClass("Model"))
+                if targetRoot and (targetRoot.Position-myRoot.Position).Magnitude<=35 then near=true end
+            end
+        end
+    end
+    if esp.Player then
+        for _,p in ipairs(Players:GetPlayers()) do
+            if p~=LP and p.Character then addHighlight(p.Character,"Player") end
+        end
+    else
+        for obj in pairs(highlights) do
+            if obj:IsA("Model") and Players:GetPlayerFromCharacter(obj) then clearHighlight(obj) end
+        end
+    end
+    if rainbow then
+        opahColor=Color3.fromHSV((os.clock()%5)/5,1,1)
+        for obj,h in pairs(highlights) do if kindOf(obj)=="Opah" then h.FillColor=opahColor; h.OutlineColor=opahColor end end
+    end
+    if near and not alertWasNear then playAlert() end
+    alertWasNear=near
+    setBanner(near and alertOn)
+end)
+
+local stepConn=RunService.Stepped:Connect(function()
+    if not alive then return end
+    local char=LP.Character
+    if char then
+        for _,p in ipairs(char:GetDescendants()) do
+            if p:IsA("BasePart") then
+                if noclip then
+                    if oldCollisions[p]==nil then oldCollisions[p]=p.CanCollide end
+                    p.CanCollide=false
+                elseif oldCollisions[p]~=nil then p.CanCollide=oldCollisions[p]; oldCollisions[p]=nil end
+            end
+        end
+        local hum=char:FindFirstChildOfClass("Humanoid")
+        if hum then
+            if speedOn then
+                if not originalSpeed then originalSpeed=hum.WalkSpeed end
+                hum.WalkSpeed=speedValue
+            elseif originalSpeed then hum.WalkSpeed=originalSpeed; originalSpeed=nil end
+        end
+    end
+end)
+
+local autoTimer=0
+local autoConn=RunService.Heartbeat:Connect(function(dt)
+    if not alive or not autoKey or typeof(fireproximityprompt)~="function" then return end
+    autoTimer+=dt; if autoTimer<.5 then return end; autoTimer=0
+    for _,v in ipairs(Workspace:GetDescendants()) do
+        if v:IsA("ProximityPrompt") then
+            local n=(v.Parent and v.Parent.Name or ""):lower()
+            if n:find("key") or n:find("kunci") then pcall(fireproximityprompt,v) end
+        end
+    end
+end)
+
+local function cleanup()
+    alive=false
+    heartbeatConn:Disconnect(); stepConn:Disconnect(); autoConn:Disconnect()
+    for obj in pairs(highlights) do clearHighlight(obj) end
+    for part,oldValue in pairs(oldCollisions) do pcall(function() part.CanCollide=oldValue end) end
+    local hum=LP.Character and LP.Character:FindFirstChildOfClass("Humanoid")
+    if hum and originalSpeed then hum.WalkSpeed=originalSpeed end
+    pcall(function() gui:Destroy() end)
+end
+if getgenv then getgenv().ZOYA_V2_CLEANUP=cleanup end
+notify("ZOYA HUB V2 berhasil dimuat. Masukkan password.")
